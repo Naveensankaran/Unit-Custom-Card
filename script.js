@@ -46,70 +46,38 @@ async function fetchAllRecords(entity) {
 }
 
 async function loadData() {
-  cardGrid.innerHTML = `<p style="color:#667085;">Loading projects…</p>`;
+  cardGrid.innerHTML = `<p style="color:#667085;">Loading units…</p>`;
 
   try {
-    const [projects, units] = await Promise.all([
-      fetchAllRecords(PROJECT_MODULE),
-      fetchAllRecords(UNIT_MODULE)
-    ]);
-
-    const projectMap = {};
-    projects.forEach((p) => {
-      projectMap[p.id] = {
-        id: p.id,
-        name: p.Name || "Untitled Project",
-        units: [],
-        configCounts: {}
-      };
-    });
-
-    units.forEach((u) => {
-      const pid = u.Project && u.Project.id;
-      if (pid && projectMap[pid]) {
-        projectMap[pid].units.push(u);
-
-        const cfg = u.Unit_Configuration_Name || "N/A";
-        projectMap[pid].configCounts[cfg] =
-          (projectMap[pid].configCounts[cfg] || 0) + 1;
-      }
-    });
-
-    renderCards(Object.values(projectMap));
+    const units = await fetchAllRecords(UNIT_MODULE);
+    renderCards(units);
   } catch (err) {
     console.error("Failed to load CRM data:", err);
     cardGrid.innerHTML = `<p style="color:#c0392b;">Couldn't load data from CRM. Check console for details.</p>`;
   }
 }
 
-function renderCards(projectList) {
+function statusBadgeClass(status) {
+  const bucket = bucketStatus(status);
+  if (bucket === "sold") return "Sold";
+  if (bucket === "blocked") return "Booked"; // reuses grey style already defined
+  return "Active"; // available / unsold -> default orange
+}
+
+function renderCards(units) {
   cardGrid.innerHTML = "";
 
-  let grandTotal = 0;
-
-  projectList.forEach((project) => {
-    const total = project.units.length;
-    grandTotal += total;
-
-    let available = 0,
-      blocked = 0,
-      sold = 0;
-
-    project.units.forEach((u) => {
-      const bucket = bucketStatus(u.Status);
-      if (bucket === "available") available++;
-      else if (bucket === "blocked") blocked++;
-      else if (bucket === "sold") sold++;
-    });
-
-    const statusLabel = available > 0 ? "Ongoing" : "Completed";
-
-    const configBadges = Object.entries(project.configCounts)
-      .map(
-        ([cfg, count]) =>
-          `<div class="config-badge"><span class="bhk-tag">${cfg}</span> ${count}</div>`
-      )
-      .join("");
+  units.forEach((u) => {
+    const projectName = (u.Project && u.Project.name) || "—";
+    const towerName = (u.Tower && u.Tower.name) || "—";
+    const floorName = (u.Floor && u.Floor.name) || "—";
+    const unitName = u.Product_Name || "Unnamed Unit";
+    const unitCode = u.Product_Code || "—";
+    const price = u.Unit_Price
+      ? "₹" + Number(u.Unit_Price).toLocaleString("en-IN")
+      : "—";
+    const config = u.Unit_Configuration_Name || "N/A";
+    const status = u.Status || "Unsold";
 
     const card = document.createElement("article");
     card.className = "unit-card";
@@ -119,42 +87,42 @@ function renderCards(projectList) {
         <div class="logo-badge">
           <img src="${DEFAULT_LOGO}" alt="logo" />
         </div>
-        <span class="status ${statusLabel}">${statusLabel}</span>
+        <span class="status ${statusBadgeClass(status)}">${status}</span>
         <div class="photo-caption">
-          <h2 class="unit-name">${project.name}</h2>
+          <div class="unit-code" style="opacity:.9; font-weight:600;">${projectName}</div>
+          <h2 class="unit-name">${unitName}</h2>
+          <div class="unit-code">Code: ${unitCode}</div>
         </div>
       </div>
 
       <div class="card-body">
-        <div class="stat-row">
-          <div class="stat-pill total">
-            <span class="num">${total}</span>
-            <span class="lbl">Total</span>
-          </div>
-          <div class="stat-pill available">
-            <span class="num">${available}</span>
-            <span class="lbl">Available</span>
-          </div>
-          <div class="stat-pill blocked">
-            <span class="num">${blocked}</span>
-            <span class="lbl">Blocked</span>
-          </div>
-          <div class="stat-pill sold">
-            <span class="num">${sold}</span>
-            <span class="lbl">Sold</span>
-          </div>
-        </div>
-
         <div class="config-badges">
-          ${configBadges || `<span style="color:#8f9ac2; font-size:12px;">No units yet</span>`}
+          <div class="config-badge">
+            <span class="bhk-tag">${config}</span>
+          </div>
         </div>
 
         <div class="divider"></div>
+
+        <div class="details">
+          <div>
+            <div class="label">Tower</div>
+            <div class="value">${towerName}</div>
+          </div>
+          <div>
+            <div class="label">Floor</div>
+            <div class="value">${floorName}</div>
+          </div>
+          <div>
+            <div class="label">Unit Price</div>
+            <div class="value">${price}</div>
+          </div>
+        </div>
       </div>
 
       <div class="card-footer">
-        <button class="view-btn" data-id="${project.id}">
-          View Project
+        <button class="view-btn" data-id="${u.id}">
+          View Unit
         </button>
       </div>
     `;
@@ -162,18 +130,18 @@ function renderCards(projectList) {
     cardGrid.appendChild(card);
   });
 
-  totalUnitsEl.textContent = grandTotal;
+  totalUnitsEl.textContent = units.length;
 
   document.querySelectorAll(".view-btn").forEach((button) => {
     button.addEventListener("click", () => {
       const recordId = button.dataset.id;
       if (ZOHO && ZOHO.CRM && ZOHO.CRM.UI && ZOHO.CRM.UI.Record) {
         ZOHO.CRM.UI.Record.open({
-          Entity: PROJECT_MODULE,
+          Entity: UNIT_MODULE,
           RecordID: recordId
         });
       } else {
-        alert("Project record ID: " + recordId);
+        alert("Unit record ID: " + recordId);
       }
     });
   });
