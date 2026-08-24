@@ -10,6 +10,14 @@ const DEFAULT_LOGO = "logo.png";
 
 const cardGrid = document.getElementById("cardGrid");
 const totalUnitsEl = document.getElementById("totalUnits");
+const projectFilterEl = document.getElementById("projectFilter");
+const statusFilterEl = document.getElementById("statusFilter");
+const filterPanelEl = document.getElementById("filterPanel");
+
+// Holds every unit fetched from CRM so filters can be applied client-side
+// without re-fetching.
+let allUnits = [];
+let activeFilters = { project: "", status: "" };
 
 function bucketStatus(status) {
   if (status === "Unsold") return "available";
@@ -49,12 +57,50 @@ async function loadData() {
   cardGrid.innerHTML = `<p style="color:#667085;">Loading units…</p>`;
 
   try {
-    const units = await fetchAllRecords(UNIT_MODULE);
-    renderCards(units);
+    allUnits = await fetchAllRecords(UNIT_MODULE);
+    populateProjectFilter(allUnits);
+    applyFilters();
   } catch (err) {
     console.error("Failed to load CRM data:", err);
     cardGrid.innerHTML = `<p style="color:#c0392b;">Couldn't load data from CRM. Check console for details.</p>`;
   }
+}
+
+function populateProjectFilter(units) {
+  const projectNames = [
+    ...new Set(
+      units
+        .map((u) => u.Project && u.Project.name)
+        .filter((name) => !!name)
+    ),
+  ].sort();
+
+  // Preserve the "All Projects" option, rebuild the rest
+  projectFilterEl.innerHTML = '<option value="">All Projects</option>';
+  projectNames.forEach((name) => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    projectFilterEl.appendChild(opt);
+  });
+}
+
+function applyFilters() {
+  let filtered = allUnits;
+
+  if (activeFilters.project) {
+    filtered = filtered.filter(
+      (u) => u.Project && u.Project.name === activeFilters.project
+    );
+  }
+
+  if (activeFilters.status) {
+    filtered = filtered.filter(
+      (u) => bucketStatus(u.Status || "Unsold") === activeFilters.status
+    );
+  }
+
+  renderCards(filtered);
 }
 
 function statusBadgeClass(status) {
@@ -148,11 +194,38 @@ function renderCards(units) {
 }
 
 document.getElementById("addUnitBtn").addEventListener("click", () => {
-  alert("We will connect this button to Zoho CRM later.");
+  if (ZOHO && ZOHO.CRM && ZOHO.CRM.UI && ZOHO.CRM.UI.Record) {
+    ZOHO.CRM.UI.Record.create({ Entity: UNIT_MODULE });
+  } else {
+    alert("Couldn't open the create page — Zoho SDK not available.");
+  }
 });
 
 document.getElementById("filterBtn").addEventListener("click", () => {
-  alert("Filtering will be connected later.");
+  filterPanelEl.classList.toggle("open");
+});
+
+document.getElementById("filterApplyBtn").addEventListener("click", () => {
+  activeFilters.project = projectFilterEl.value;
+  activeFilters.status = statusFilterEl.value;
+  applyFilters();
+  filterPanelEl.classList.remove("open");
+});
+
+document.getElementById("filterClearBtn").addEventListener("click", () => {
+  projectFilterEl.value = "";
+  statusFilterEl.value = "";
+  activeFilters = { project: "", status: "" };
+  applyFilters();
+  filterPanelEl.classList.remove("open");
+});
+
+// Close the filter panel when clicking outside of it
+document.addEventListener("click", (e) => {
+  const wrap = document.querySelector(".filter-wrap");
+  if (wrap && !wrap.contains(e.target)) {
+    filterPanelEl.classList.remove("open");
+  }
 });
 
 ZOHO.embeddedApp.on("PageLoad", function (data) {

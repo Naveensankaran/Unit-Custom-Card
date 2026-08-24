@@ -18,7 +18,30 @@
 
     <div class="toolbar">
       <strong>Total Units: <span id="totalUnits">0</span></strong>
-      <button class="filter-btn" id="filterBtn">Filter</button>
+      <div class="filter-wrap">
+        <button class="filter-btn" id="filterBtn">Filter</button>
+        <div class="filter-panel" id="filterPanel">
+          <div class="filter-row">
+            <label for="projectFilter">Project</label>
+            <select id="projectFilter">
+              <option value="">All Projects</option>
+            </select>
+          </div>
+          <div class="filter-row">
+            <label for="statusFilter">Status</label>
+            <select id="statusFilter">
+              <option value="">All</option>
+              <option value="available">Unsold</option>
+              <option value="sold">Sold</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </div>
+          <div class="filter-actions">
+            <button class="filter-clear-btn" id="filterClearBtn">Clear</button>
+            <button class="filter-apply-btn" id="filterApplyBtn">Apply</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <main id="cardGrid" class="card-grid"></main>
