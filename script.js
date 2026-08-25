@@ -1,12 +1,15 @@
 // ---- Config: module + field API names ----
 // NOTE: In this org, the tab labeled "Project" actually has API name "Unit",
 // and the tab labeled "Unit" actually has API name "Products".
-const PROJECT_MODULE = "Unit";
-const UNIT_MODULE = "Products";
+const PROJECT_MODULE = "Unit";       // Project records live here
+const UNIT_MODULE = "Products";      // Unit records live here
 
-// Fallback photo/logo if a project has no matching image
+// Fallback photo/logo if a project has no Record_Image
 const DEFAULT_PHOTO = "project1.jpg";
 const DEFAULT_LOGO = "logo.png";
+
+// Field on the Project module that holds the project photo (Image upload field)
+const PROJECT_IMAGE_FIELD = "Record_Image";
 
 const cardGrid = document.getElementById("cardGrid");
 const totalUnitsEl = document.getElementById("totalUnits");
@@ -14,17 +17,13 @@ const projectFilterEl = document.getElementById("projectFilter");
 const statusFilterEl = document.getElementById("statusFilter");
 const filterPanelEl = document.getElementById("filterPanel");
 
-// Holds every unit fetched from CRM so filters can be applied client-side
-// without re-fetching.
-let allUnits = [];
-let activeFilters = { project: "", status: "" };
+// Raw CRM status values we roll up into per-project stat pills
+const STATUS_KEYS = ["Unsold", "Sold", "Owner Share", "Blocked", "Mortgage"];
 
-function bucketStatus(status) {
-  if (status === "Unsold") return "available";
-  if (status === "Blocked") return "blocked";
-  if (status === "Sold" || status === "Owner Share" || status === "Mortgage") return "sold";
-  return "other";
-}
+let allProjects = [];   // raw Project records
+let allUnits = [];      // raw Unit (Products) records
+let projectCards = [];  // [{ project, stats: {...}, total }]
+let activeFilters = { project: "", status: "" };
 
 async function fetchAllRecords(entity) {
   let allRecords = [];
@@ -53,12 +52,36 @@ async function fetchAllRecords(entity) {
   return allRecords;
 }
 
+// Pulls a usable image URL out of an Image-type field, whatever shape the
+// API happens to hand back (plain string vs. object with a url-ish key).
+function resolveImageUrl(fieldValue) {
+  if (!fieldValue) return null;
+  if (typeof fieldValue === "string") return fieldValue;
+  if (typeof fieldValue === "object") {
+    return (
+      fieldValue.url ||
+      fieldValue.download_url ||
+      fieldValue.__unstable__url ||
+      null
+    );
+  }
+  return null;
+}
+
 async function loadData() {
-  cardGrid.innerHTML = `<p style="color:#667085;">Loading units…</p>`;
+  cardGrid.innerHTML = `<p style="color:#667085;">Loading projects…</p>`;
 
   try {
-    allUnits = await fetchAllRecords(UNIT_MODULE);
-    populateProjectFilter(allUnits);
+    const [projects, units] = await Promise.all([
+      fetchAllRecords(PROJECT_MODULE),
+      fetchAllRecords(UNIT_MODULE)
+    ]);
+
+    allProjects = projects;
+    allUnits = units;
+
+    projectCards = buildProjectCards(allProjects, allUnits);
+    populateProjectFilter(projectCards);
     applyFilters();
   } catch (err) {
     console.error("Failed to load CRM data:", err);
@@ -66,16 +89,42 @@ async function loadData() {
   }
 }
 
-function populateProjectFilter(units) {
-  const projectNames = [
-    ...new Set(
-      units
-        .map((u) => u.Project && u.Project.name)
-        .filter((name) => !!name)
-    ),
-  ].sort();
+// Groups units under their parent project and tallies each status bucket.
+function buildProjectCards(projects, units) {
+  const unitsByProjectId = {};
 
-  // Preserve the "All Projects" option, rebuild the rest
+  units.forEach((u) => {
+    const projId = u.Project && u.Project.id;
+    if (!projId) return;
+    if (!unitsByProjectId[projId]) unitsByProjectId[projId] = [];
+    unitsByProjectId[projId].push(u);
+  });
+
+  return projects.map((p) => {
+    const projUnits = unitsByProjectId[p.id] || [];
+
+    const stats = {};
+    STATUS_KEYS.forEach((key) => (stats[key] = 0));
+
+    projUnits.forEach((u) => {
+      const status = u.Status || "Unsold";
+      if (stats.hasOwnProperty(status)) {
+        stats[status] += 1;
+      }
+    });
+
+    return {
+      project: p,
+      total: projUnits.length,
+      stats,
+      imageUrl: resolveImageUrl(p[PROJECT_IMAGE_FIELD])
+    };
+  });
+}
+
+function populateProjectFilter(cards) {
+  const projectNames = [...new Set(cards.map((c) => c.project.Name).filter(Boolean))].sort();
+
   projectFilterEl.innerHTML = '<option value="">All Projects</option>';
   projectNames.forEach((name) => {
     const opt = document.createElement("option");
@@ -86,89 +135,81 @@ function populateProjectFilter(units) {
 }
 
 function applyFilters() {
-  let filtered = allUnits;
+  let filtered = projectCards;
 
   if (activeFilters.project) {
-    filtered = filtered.filter(
-      (u) => u.Project && u.Project.name === activeFilters.project
-    );
+    filtered = filtered.filter((c) => c.project.Name === activeFilters.project);
   }
 
+  // With project-level cards, the status filter narrows to projects that
+  // actually have at least one unit in that status.
   if (activeFilters.status) {
-    filtered = filtered.filter(
-      (u) => bucketStatus(u.Status || "Unsold") === activeFilters.status
-    );
+    filtered = filtered.filter((c) => (c.stats[activeFilters.status] || 0) > 0);
   }
 
   renderCards(filtered);
 }
 
-function statusBadgeClass(status) {
-  const bucket = bucketStatus(status);
-  if (bucket === "sold") return "Sold";
-  if (bucket === "blocked") return "Booked"; // reuses grey style already defined
-  return "Active"; // available / unsold -> default orange
+function escapeHtml(value) {
+  const div = document.createElement("div");
+  div.textContent = value == null ? "" : String(value);
+  return div.innerHTML;
 }
 
-function renderCards(units) {
+function renderCards(cards) {
   cardGrid.innerHTML = "";
 
-  units.forEach((u) => {
-    const projectName = (u.Project && u.Project.name) || "—";
-    const towerName = (u.Tower && u.Tower.name) || "—";
-    const floorName = (u.Floor && u.Floor.name) || "—";
-    const unitName = u.Product_Name || "Unnamed Unit";
-    const unitCode = u.Product_Code || "—";
-    const price = u.Unit_Price
-      ? "₹" + Number(u.Unit_Price).toLocaleString("en-IN")
-      : "—";
-    const config = u.Unit_Configuration_Name || "N/A";
-    const status = u.Status || "Unsold";
+  cards.forEach((c) => {
+    const projectName = c.project.Name || "Unnamed Project";
+    const photoUrl = c.imageUrl || DEFAULT_PHOTO;
 
     const card = document.createElement("article");
     card.className = "unit-card";
 
     card.innerHTML = `
-      <div class="card-photo" style="background-image: url('${DEFAULT_PHOTO}');">
+      <div class="card-photo" style="background-image: url('${photoUrl}');">
         <div class="logo-badge">
           <img src="${DEFAULT_LOGO}" alt="logo" />
         </div>
-        <span class="status ${statusBadgeClass(status)}">${status}</span>
         <div class="photo-caption">
-          <div class="unit-code" style="opacity:.9; font-weight:600;">${projectName}</div>
-          <h2 class="unit-name">${unitName}</h2>
-          <div class="unit-code">Code: ${unitCode}</div>
+          <h2 class="unit-name">${escapeHtml(projectName)}</h2>
         </div>
       </div>
 
       <div class="card-body">
-        <div class="config-badges">
-          <div class="config-badge">
-            <span class="bhk-tag">${config}</span>
+        <div class="stat-row">
+          <div class="stat-pill total">
+            <span class="num">${c.total}</span>
+            <span class="lbl">Total</span>
+          </div>
+          <div class="stat-pill available">
+            <span class="num">${c.stats["Unsold"]}</span>
+            <span class="lbl">Available</span>
+          </div>
+          <div class="stat-pill sold">
+            <span class="num">${c.stats["Sold"]}</span>
+            <span class="lbl">Sold</span>
           </div>
         </div>
-
-        <div class="divider"></div>
-
-        <div class="details">
-          <div>
-            <div class="label">Tower</div>
-            <div class="value">${towerName}</div>
+        <div class="stat-row">
+          <div class="stat-pill owner-share">
+            <span class="num">${c.stats["Owner Share"]}</span>
+            <span class="lbl">Owner Share</span>
           </div>
-          <div>
-            <div class="label">Floor</div>
-            <div class="value">${floorName}</div>
+          <div class="stat-pill blocked">
+            <span class="num">${c.stats["Blocked"]}</span>
+            <span class="lbl">Blocked</span>
           </div>
-          <div>
-            <div class="label">Unit Price</div>
-            <div class="value">${price}</div>
+          <div class="stat-pill mortgage">
+            <span class="num">${c.stats["Mortgage"]}</span>
+            <span class="lbl">Mortgage</span>
           </div>
         </div>
       </div>
 
       <div class="card-footer">
-        <button class="view-btn" data-id="${u.id}">
-          View Unit
+        <button class="view-btn" data-id="${c.project.id}">
+          View Project
         </button>
       </div>
     `;
@@ -176,18 +217,18 @@ function renderCards(units) {
     cardGrid.appendChild(card);
   });
 
-  totalUnitsEl.textContent = units.length;
+  totalUnitsEl.textContent = cards.reduce((sum, c) => sum + c.total, 0);
 
   document.querySelectorAll(".view-btn").forEach((button) => {
     button.addEventListener("click", () => {
       const recordId = button.dataset.id;
       if (ZOHO && ZOHO.CRM && ZOHO.CRM.UI && ZOHO.CRM.UI.Record) {
         ZOHO.CRM.UI.Record.open({
-          Entity: UNIT_MODULE,
+          Entity: PROJECT_MODULE,
           RecordID: recordId
         });
       } else {
-        alert("Unit record ID: " + recordId);
+        alert("Project record ID: " + recordId);
       }
     });
   });
@@ -220,7 +261,6 @@ document.getElementById("filterClearBtn").addEventListener("click", () => {
   filterPanelEl.classList.remove("open");
 });
 
-// Close the filter panel when clicking outside of it
 document.addEventListener("click", (e) => {
   const wrap = document.querySelector(".filter-wrap");
   if (wrap && !wrap.contains(e.target)) {

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unit Custom Card</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="dashboard">
+    <header class="header">
+      <div>
+        <h1>Unit Custom Card</h1>
+        <p class="subtitle">Unit overview</p>
+      </div>
+      <button class="add-btn" id="addUnitBtn">+ Add Unit</button>
+    </header>
+
+    <div class="toolbar">
+      <strong>Total Units: <span id="totalUnits">0</span></strong>
+      <div class="filter-wrap">
+        <button class="filter-btn" id="filterBtn">Filter</button>
+        <div class="filter-panel" id="filterPanel">
+          <div class="filter-row">
+            <label for="projectFilter">Project</label>
+            <select id="projectFilter">
+              <option value="">All Projects</option>
+            </select>
+          </div>
+          <div class="filter-row">
+            <label for="statusFilter">Status</label>
+            <select id="statusFilter">
+              <option value="">All</option>
+              <option value="Unsold">Unsold</option>
+              <option value="Sold">Sold</option>
+              <option value="Owner Share">Owner Share</option>
+              <option value="Blocked">Blocked</option>
+              <option value="Mortgage">Mortgage</option>
+            </select>
+          </div>
+          <div class="filter-actions">
+            <button class="filter-clear-btn" id="filterClearBtn">Clear</button>
+            <button class="filter-apply-btn" id="filterApplyBtn">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <main id="cardGrid" class="card-grid"></main>
+  </div>
+
+  <script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

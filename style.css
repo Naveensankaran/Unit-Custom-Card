@@ -287,6 +287,14 @@ h1 {
   background: linear-gradient(135deg, #8f5cf7, #5a3ff0);
 }
 
+.stat-pill.owner-share {
+  background: linear-gradient(135deg, #17b891, #0e8f6f);
+}
+
+.stat-pill.mortgage {
+  background: linear-gradient(135deg, #ffb020, #e08e00);
+}
+
 .divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.08);
