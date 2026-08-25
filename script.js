@@ -11,6 +11,10 @@ const DEFAULT_LOGO = "logo.png";
 // Field on the Project module that holds the project photo (Image upload field)
 const PROJECT_IMAGE_FIELD = "Record_Image";
 
+// Zoho data-center domain for your org — change if not .com
+// e.g. "crm.zoho.in" for India DC, "crm.zoho.eu" for EU DC, etc.
+const CRM_DOMAIN = "crm.zoho.com";
+
 const cardGrid = document.getElementById("cardGrid");
 const totalUnitsEl = document.getElementById("totalUnits");
 const projectFilterEl = document.getElementById("projectFilter");
@@ -28,6 +32,17 @@ let allProjects = [];   // raw Project records
 let allUnits = [];      // raw Unit (Products) records
 let projectCards = [];  // [{ project, stats: {...}, total }]
 let activeFilters = { project: "", status: "" };
+let orgId = null;       // Zoho org id, needed to build record-image URLs
+
+// Fetches the current org's id (zgid), used in the record-image URL pattern.
+async function getOrgId() {
+  try {
+    const data = await ZOHO.CRM.CONFIG.getOrgInfo();
+    orgId = data.org[0].zgid;
+  } catch (err) {
+    console.error("Failed to fetch org info:", err);
+  }
+}
 
 async function fetchAllRecords(entity) {
   let allRecords = [];
@@ -56,26 +71,38 @@ async function fetchAllRecords(entity) {
   return allRecords;
 }
 
-// Pulls a usable image URL out of an Image-type field, whatever shape the
-// API happens to hand back (plain string vs. object with a url-ish key).
-function resolveImageUrl(fieldValue) {
+// Builds the record-photo URL for a Project (Unit module) record.
+// The API returns Record_Image as either a plain file-id string or an
+// object depending on API version — this handles both. Logs the raw
+// value once per project on first load so you can confirm the shape
+// your org actually returns.
+function buildProjectImageUrl(project) {
+  const fieldValue = project[PROJECT_IMAGE_FIELD];
+
   if (!fieldValue) return null;
-  if (typeof fieldValue === "string") return fieldValue;
-  if (typeof fieldValue === "object") {
-    return (
-      fieldValue.url ||
-      fieldValue.download_url ||
-      fieldValue.__unstable__url ||
-      null
-    );
+  if (!orgId) {
+    console.warn("orgId not set yet — can't build image URL for", project.id);
+    return null;
   }
-  return null;
+
+  const fileId = typeof fieldValue === "string"
+    ? fieldValue
+    : (fieldValue.file_id || fieldValue.id || null);
+
+  if (!fileId) {
+    console.warn("Record_Image present but no usable file id:", fieldValue);
+    return null;
+  }
+
+  return `https://${CRM_DOMAIN}/crm/${orgId}/EntityImageAttach.do?action_module=${PROJECT_MODULE}&entityId=${project.id}&actionName=readImage&fileId=${fileId}`;
 }
 
 async function loadData() {
   cardGrid.innerHTML = `<p style="color:#667085;">Loading projects…</p>`;
 
   try {
+    await getOrgId();
+
     const [projects, units] = await Promise.all([
       fetchAllRecords(PROJECT_MODULE),
       fetchAllRecords(UNIT_MODULE)
@@ -121,7 +148,7 @@ function buildProjectCards(projects, units) {
       project: p,
       total: projUnits.length,
       stats,
-      imageUrl: resolveImageUrl(p[PROJECT_IMAGE_FIELD])
+      imageUrl: buildProjectImageUrl(p)
     };
   });
 }
