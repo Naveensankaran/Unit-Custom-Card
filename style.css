@@ -377,9 +377,9 @@ h1 {
   inset: 0;
   background: rgba(10, 14, 30, 0.55);
   z-index: 100;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 20px;
+  padding: 24px 20px;
 }
 
 .modal-overlay.open {
@@ -391,7 +391,7 @@ h1 {
   border-radius: 14px;
   width: 100%;
   max-width: 760px;
-  max-height: 80vh;
+  max-height: 92vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
