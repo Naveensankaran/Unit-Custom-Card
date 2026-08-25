@@ -13,7 +13,7 @@ const PROJECT_IMAGE_FIELD = "Record_Image";
 
 // Zoho data-center domain for your org — change if not .com
 // e.g. "crm.zoho.in" for India DC, "crm.zoho.eu" for EU DC, etc.
-const CRM_DOMAIN = "crm.zoho.com";
+const CRM_DOMAIN = "crm.zoho.in";
 
 const cardGrid = document.getElementById("cardGrid");
 const totalUnitsEl = document.getElementById("totalUnits");
