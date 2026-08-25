@@ -16,6 +16,10 @@ const totalUnitsEl = document.getElementById("totalUnits");
 const projectFilterEl = document.getElementById("projectFilter");
 const statusFilterEl = document.getElementById("statusFilter");
 const filterPanelEl = document.getElementById("filterPanel");
+const unitModalOverlayEl = document.getElementById("unitModalOverlay");
+const unitModalTitleEl = document.getElementById("unitModalTitle");
+const unitModalBodyEl = document.getElementById("unitModalBody");
+const unitModalCloseBtnEl = document.getElementById("unitModalCloseBtn");
 
 // Raw CRM status values we roll up into per-project stat pills
 const STATUS_KEYS = ["Unsold", "Sold", "Owner Share", "Blocked", "Mortgage"];
@@ -178,39 +182,33 @@ function renderCards(cards) {
 
       <div class="card-body">
         <div class="stat-row">
-          <div class="stat-pill total">
+          <div class="stat-pill total" data-project-id="${c.project.id}" data-project-name="${escapeHtml(projectName)}" data-status="">
             <span class="num">${c.total}</span>
             <span class="lbl">Total</span>
           </div>
-          <div class="stat-pill available">
+          <div class="stat-pill available" data-project-id="${c.project.id}" data-project-name="${escapeHtml(projectName)}" data-status="Unsold">
             <span class="num">${c.stats["Unsold"]}</span>
             <span class="lbl">Available</span>
           </div>
-          <div class="stat-pill sold">
+          <div class="stat-pill sold" data-project-id="${c.project.id}" data-project-name="${escapeHtml(projectName)}" data-status="Sold">
             <span class="num">${c.stats["Sold"]}</span>
             <span class="lbl">Sold</span>
           </div>
         </div>
         <div class="stat-row">
-          <div class="stat-pill owner-share">
+          <div class="stat-pill owner-share" data-project-id="${c.project.id}" data-project-name="${escapeHtml(projectName)}" data-status="Owner Share">
             <span class="num">${c.stats["Owner Share"]}</span>
             <span class="lbl">Owner Share</span>
           </div>
-          <div class="stat-pill blocked">
+          <div class="stat-pill blocked" data-project-id="${c.project.id}" data-project-name="${escapeHtml(projectName)}" data-status="Blocked">
             <span class="num">${c.stats["Blocked"]}</span>
             <span class="lbl">Blocked</span>
           </div>
-          <div class="stat-pill mortgage">
+          <div class="stat-pill mortgage" data-project-id="${c.project.id}" data-project-name="${escapeHtml(projectName)}" data-status="Mortgage">
             <span class="num">${c.stats["Mortgage"]}</span>
             <span class="lbl">Mortgage</span>
           </div>
         </div>
-      </div>
-
-      <div class="card-footer">
-        <button class="view-btn" data-id="${c.project.id}">
-          View Project
-        </button>
       </div>
     `;
 
@@ -219,19 +217,69 @@ function renderCards(cards) {
 
   totalUnitsEl.textContent = cards.reduce((sum, c) => sum + c.total, 0);
 
-  document.querySelectorAll(".view-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      const recordId = button.dataset.id;
+  // Each stat pill drills down into the matching units for that project.
+  document.querySelectorAll(".stat-pill").forEach((pill) => {
+    pill.addEventListener("click", () => {
+      const projectId = pill.dataset.projectId;
+      const status = pill.dataset.status; // "" means all statuses (Total pill)
+      const projectName = pill.dataset.projectName;
+      const label = pill.querySelector(".lbl").textContent;
+      openUnitModal(projectId, status, `${projectName} — ${label}`);
+    });
+  });
+}
+
+function openUnitModal(projectId, status, title) {
+  const matches = allUnits.filter((u) => {
+    const belongsToProject = u.Project && u.Project.id === projectId;
+    if (!belongsToProject) return false;
+    if (!status) return true;
+    return (u.Status || "Unsold") === status;
+  });
+
+  unitModalTitleEl.textContent = title;
+  unitModalBodyEl.innerHTML = "";
+
+  if (matches.length === 0) {
+    unitModalBodyEl.innerHTML = `<p class="modal-empty">No units found.</p>`;
+  } else {
+    matches.forEach((u) => {
+      const unitName = u.Product_Name || "Unnamed Unit";
+      const unitCode = u.Product_Code || "—";
+      const towerName = (u.Tower && u.Tower.name) || "—";
+      const floorName = (u.Floor && u.Floor.name) || "—";
+      const price = u.Unit_Price ? "₹" + Number(u.Unit_Price).toLocaleString("en-IN") : "—";
+      const status = u.Status || "Unsold";
+
+      const row = document.createElement("div");
+      row.className = "unit-row";
+      row.innerHTML = `
+        <div class="unit-row-info">
+          <div class="unit-row-name">${escapeHtml(unitName)} <span style="color:#667085;font-weight:500;">(${escapeHtml(unitCode)})</span></div>
+          <div class="unit-row-meta">Tower ${escapeHtml(towerName)} · Floor ${escapeHtml(floorName)} · ${escapeHtml(price)} · ${escapeHtml(status)}</div>
+        </div>
+        <button class="unit-row-view-btn" data-id="${u.id}">View</button>
+      `;
+      unitModalBodyEl.appendChild(row);
+    });
+  }
+
+  unitModalBodyEl.querySelectorAll(".unit-row-view-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const recordId = btn.dataset.id;
       if (ZOHO && ZOHO.CRM && ZOHO.CRM.UI && ZOHO.CRM.UI.Record) {
-        ZOHO.CRM.UI.Record.open({
-          Entity: PROJECT_MODULE,
-          RecordID: recordId
-        });
+        ZOHO.CRM.UI.Record.open({ Entity: UNIT_MODULE, RecordID: recordId });
       } else {
-        alert("Project record ID: " + recordId);
+        alert("Unit record ID: " + recordId);
       }
     });
   });
+
+  unitModalOverlayEl.classList.add("open");
+}
+
+function closeUnitModal() {
+  unitModalOverlayEl.classList.remove("open");
 }
 
 document.getElementById("addUnitBtn").addEventListener("click", () => {
@@ -266,6 +314,12 @@ document.addEventListener("click", (e) => {
   if (wrap && !wrap.contains(e.target)) {
     filterPanelEl.classList.remove("open");
   }
+});
+
+unitModalCloseBtnEl.addEventListener("click", closeUnitModal);
+
+unitModalOverlayEl.addEventListener("click", (e) => {
+  if (e.target === unitModalOverlayEl) closeUnitModal();
 });
 
 ZOHO.embeddedApp.on("PageLoad", function (data) {
