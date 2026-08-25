@@ -10,7 +10,7 @@ const DEFAULT_LOGO = "logo.png";
 
 // Name of the Deluge function (Setup > Functions) that proxies the
 // authenticated record-photo download and returns it base64-encoded.
-const PHOTO_FUNCTION_NAME = "getProjectPhoto";
+const PHOTO_FUNCTION_NAME = "getprojectphoto";
 
 const cardGrid = document.getElementById("cardGrid");
 const totalUnitsEl = document.getElementById("totalUnits");
