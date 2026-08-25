@@ -15,7 +15,6 @@ const PHOTO_FUNCTION_NAME = "getprojectphoto";
 const cardGrid = document.getElementById("cardGrid");
 const totalUnitsEl = document.getElementById("totalUnits");
 const projectFilterEl = document.getElementById("projectFilter");
-const statusFilterEl = document.getElementById("statusFilter");
 const filterPanelEl = document.getElementById("filterPanel");
 const unitModalOverlayEl = document.getElementById("unitModalOverlay");
 const unitModalTitleEl = document.getElementById("unitModalTitle");
@@ -28,7 +27,7 @@ const STATUS_KEYS = ["Unsold", "Sold", "Owner Share", "Blocked", "Mortgage"];
 let allProjects = [];   // raw Project records
 let allUnits = [];      // raw Unit (Products) records
 let projectCards = [];  // [{ project, stats: {...}, total }]
-let activeFilters = { project: "", status: "" };
+let activeProjectFilter = "";
 
 async function fetchAllRecords(entity) {
   let allRecords = [];
@@ -147,18 +146,11 @@ function populateProjectFilter(cards) {
   });
 }
 
+// Project-name-only filter. Applied live on selection change — no Apply click needed.
 function applyFilters() {
-  let filtered = projectCards;
-
-  if (activeFilters.project) {
-    filtered = filtered.filter((c) => c.project.Name === activeFilters.project);
-  }
-
-  // With project-level cards, the status filter narrows to projects that
-  // actually have at least one unit in that status.
-  if (activeFilters.status) {
-    filtered = filtered.filter((c) => (c.stats[activeFilters.status] || 0) > 0);
-  }
+  const filtered = activeProjectFilter
+    ? projectCards.filter((c) => c.project.Name === activeProjectFilter)
+    : projectCards;
 
   renderCards(filtered);
 }
@@ -203,7 +195,7 @@ function renderCards(cards) {
           </div>
           <div class="stat-pill available" data-project-id="${c.project.id}" data-project-name="${escapeHtml(projectName)}" data-status="Unsold">
             <span class="num">${c.stats["Unsold"]}</span>
-            <span class="lbl">Available</span>
+            <span class="lbl">Unsold</span>
           </div>
           <div class="stat-pill sold" data-project-id="${c.project.id}" data-project-name="${escapeHtml(projectName)}" data-status="Sold">
             <span class="num">${c.stats["Sold"]}</span>
@@ -331,17 +323,15 @@ document.getElementById("filterBtn").addEventListener("click", () => {
   filterPanelEl.classList.toggle("open");
 });
 
-document.getElementById("filterApplyBtn").addEventListener("click", () => {
-  activeFilters.project = projectFilterEl.value;
-  activeFilters.status = statusFilterEl.value;
+// Filters the moment the dropdown value changes — no Apply click needed.
+projectFilterEl.addEventListener("change", () => {
+  activeProjectFilter = projectFilterEl.value;
   applyFilters();
-  filterPanelEl.classList.remove("open");
 });
 
 document.getElementById("filterClearBtn").addEventListener("click", () => {
   projectFilterEl.value = "";
-  statusFilterEl.value = "";
-  activeFilters = { project: "", status: "" };
+  activeProjectFilter = "";
   applyFilters();
   filterPanelEl.classList.remove("open");
 });
