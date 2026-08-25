@@ -16,7 +16,32 @@
     </header>
 
     <div class="toolbar">
-      <strong>Total Units: <span id="totalUnits">0</span></strong>
+      <div class="summary-stats" id="summaryStats">
+        <div class="summary-pill total">
+          <span class="num" id="totalUnits">0</span>
+          <span class="lbl">Total</span>
+        </div>
+        <div class="summary-pill available">
+          <span class="num" id="unsoldUnits">0</span>
+          <span class="lbl">Unsold</span>
+        </div>
+        <div class="summary-pill sold">
+          <span class="num" id="soldUnits">0</span>
+          <span class="lbl">Sold</span>
+        </div>
+        <div class="summary-pill owner-share">
+          <span class="num" id="ownerShareUnits">0</span>
+          <span class="lbl">Owner Share</span>
+        </div>
+        <div class="summary-pill blocked">
+          <span class="num" id="blockedUnits">0</span>
+          <span class="lbl">Blocked</span>
+        </div>
+        <div class="summary-pill mortgage">
+          <span class="num" id="mortgageUnits">0</span>
+          <span class="lbl">Mortgage</span>
+        </div>
+      </div>
       <div class="filter-wrap">
         <button class="filter-btn" id="filterBtn">Filter</button>
         <div class="filter-panel" id="filterPanel">

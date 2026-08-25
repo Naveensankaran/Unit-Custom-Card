@@ -53,6 +53,69 @@ h1 {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.summary-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  padding: 7px 14px;
+  color: white;
+}
+
+.summary-pill .num {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.summary-pill .lbl {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  opacity: 0.9;
+}
+
+.summary-pill.total {
+  background: linear-gradient(135deg, #ff5f6d, #d92e6b);
+}
+
+.summary-pill.available {
+  background: linear-gradient(135deg, #ff8fb1, #ff5f9e);
+}
+
+.summary-pill.blocked {
+  background: linear-gradient(135deg, #7b6cf6, #5a3ff0);
+}
+
+.summary-pill.sold {
+  background: linear-gradient(135deg, #8f5cf7, #5a3ff0);
+}
+
+.summary-pill.owner-share {
+  background: linear-gradient(135deg, #17b891, #0e8f6f);
+}
+
+.summary-pill.mortgage {
+  background: linear-gradient(135deg, #ffb020, #e08e00);
+}
+
+@media (max-width: 600px) {
+  .summary-stats {
+    gap: 8px;
+  }
+
+  .summary-pill {
+    padding: 6px 10px;
+  }
 }
 
 .filter-btn {

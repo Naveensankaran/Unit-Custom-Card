@@ -14,6 +14,11 @@ const PHOTO_FUNCTION_NAME = "getprojectphoto";
 
 const cardGrid = document.getElementById("cardGrid");
 const totalUnitsEl = document.getElementById("totalUnits");
+const unsoldUnitsEl = document.getElementById("unsoldUnits");
+const soldUnitsEl = document.getElementById("soldUnits");
+const ownerShareUnitsEl = document.getElementById("ownerShareUnits");
+const blockedUnitsEl = document.getElementById("blockedUnits");
+const mortgageUnitsEl = document.getElementById("mortgageUnits");
 const projectFilterEl = document.getElementById("projectFilter");
 const filterPanelEl = document.getElementById("filterPanel");
 const unitModalOverlayEl = document.getElementById("unitModalOverlay");
@@ -222,7 +227,22 @@ function renderCards(cards) {
     cardGrid.appendChild(card);
   });
 
-  totalUnitsEl.textContent = cards.reduce((sum, c) => sum + c.total, 0);
+  const summary = { total: 0 };
+  STATUS_KEYS.forEach((key) => (summary[key] = 0));
+
+  cards.forEach((c) => {
+    summary.total += c.total;
+    STATUS_KEYS.forEach((key) => {
+      summary[key] += c.stats[key] || 0;
+    });
+  });
+
+  totalUnitsEl.textContent = summary.total;
+  unsoldUnitsEl.textContent = summary["Unsold"];
+  soldUnitsEl.textContent = summary["Sold"];
+  ownerShareUnitsEl.textContent = summary["Owner Share"];
+  blockedUnitsEl.textContent = summary["Blocked"];
+  mortgageUnitsEl.textContent = summary["Mortgage"];
 
   // Each stat pill drills down into the matching units for that project.
   document.querySelectorAll(".stat-pill").forEach((pill) => {
