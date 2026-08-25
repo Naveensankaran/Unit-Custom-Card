@@ -1,0 +1,31 @@
+// Deluge function name: getProjectPhoto
+// Category: standalone (callable from widgets via ZOHO.CRM.FUNCTIONS.execute)
+// Argument: id (String) — the Project (module API name "Unit") record ID
+// Connection: "connection1" — must have scope covering ZohoCRM.modules.ALL
+//   (or ZohoCRM.modules.Unit.READ) for the Unit module's photo endpoint.
+//
+// NOTE: standalone functions must return a string. The result Map is
+// serialized via .toString() to JSON, which script.js parses back out.
+
+string standalone.getProjectPhoto(String id)
+{
+	record_id = id;
+	response = invokeurl
+	[
+		url: "https://www.zohoapis.in/crm/v8/Unit/" + record_id + "/photo"
+		type: GET
+		connection: "connection1"
+	];
+
+	// If the record has no photo, Zoho returns an error/empty body instead of image bytes.
+	if(response == null || response.length() == 0)
+	{
+		return Map().toString();
+	}
+
+	base64Image = zoho.encryption.base64Encode(response);
+
+	result = Map();
+	result.put("base64", base64Image);
+	return result.toString();
+}

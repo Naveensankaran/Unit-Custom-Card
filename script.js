@@ -4,16 +4,13 @@
 const PROJECT_MODULE = "Unit";       // Project records live here
 const UNIT_MODULE = "Products";      // Unit records live here
 
-// Fallback photo/logo if a project has no Record_Image
+// Fallback photo/logo if a project has no photo or the fetch fails
 const DEFAULT_PHOTO = "project1.jpg";
 const DEFAULT_LOGO = "logo.png";
 
-// Field on the Project module that holds the project photo (Image upload field)
-const PROJECT_IMAGE_FIELD = "Record_Image";
-
-// Zoho data-center domain for your org — change if not .com
-// e.g. "crm.zoho.in" for India DC, "crm.zoho.eu" for EU DC, etc.
-const CRM_DOMAIN = "crm.zoho.in";
+// Name of the Deluge function (Setup > Functions) that proxies the
+// authenticated record-photo download and returns it base64-encoded.
+const PHOTO_FUNCTION_NAME = "getProjectPhoto";
 
 const cardGrid = document.getElementById("cardGrid");
 const totalUnitsEl = document.getElementById("totalUnits");
@@ -32,17 +29,6 @@ let allProjects = [];   // raw Project records
 let allUnits = [];      // raw Unit (Products) records
 let projectCards = [];  // [{ project, stats: {...}, total }]
 let activeFilters = { project: "", status: "" };
-let orgId = null;       // Zoho org id, needed to build record-image URLs
-
-// Fetches the current org's id (zgid), used in the record-image URL pattern.
-async function getOrgId() {
-  try {
-    const data = await ZOHO.CRM.CONFIG.getOrgInfo();
-    orgId = data.org[0].zgid;
-  } catch (err) {
-    console.error("Failed to fetch org info:", err);
-  }
-}
 
 async function fetchAllRecords(entity) {
   let allRecords = [];
@@ -71,38 +57,29 @@ async function fetchAllRecords(entity) {
   return allRecords;
 }
 
-// Builds the record-photo URL for a Project (Unit module) record.
-// The API returns Record_Image as either a plain file-id string or an
-// object depending on API version — this handles both. Logs the raw
-// value once per project on first load so you can confirm the shape
-// your org actually returns.
-function buildProjectImageUrl(project) {
-  const fieldValue = project[PROJECT_IMAGE_FIELD];
+// Calls the Deluge function to fetch a project's native record photo,
+// server-side, and returns a usable data: URL — or null if it has none.
+async function fetchProjectPhoto(recordId) {
+  try {
+    const result = await ZOHO.CRM.FUNCTIONS.execute(PHOTO_FUNCTION_NAME, {
+      arguments: JSON.stringify({ id: recordId })
+    });
 
-  if (!fieldValue) return null;
-  if (!orgId) {
-    console.warn("orgId not set yet — can't build image URL for", project.id);
+    const output = result && result.details && result.details.output;
+    const parsed = output ? JSON.parse(output) : null;
+    const base64 = parsed ? parsed.base64 : null;
+
+    return base64 ? `data:image/jpeg;base64,${base64}` : null;
+  } catch (err) {
+    console.error("Failed to fetch photo for record " + recordId, err);
     return null;
   }
-
-  const fileId = typeof fieldValue === "string"
-    ? fieldValue
-    : (fieldValue.file_id || fieldValue.id || null);
-
-  if (!fileId) {
-    console.warn("Record_Image present but no usable file id:", fieldValue);
-    return null;
-  }
-
-  return `https://${CRM_DOMAIN}/crm/${orgId}/EntityImageAttach.do?action_module=${PROJECT_MODULE}&entityId=${project.id}&actionName=readImage&fileId=${fileId}`;
 }
 
 async function loadData() {
   cardGrid.innerHTML = `<p style="color:#667085;">Loading projects…</p>`;
 
   try {
-    await getOrgId();
-
     const [projects, units] = await Promise.all([
       fetchAllRecords(PROJECT_MODULE),
       fetchAllRecords(UNIT_MODULE)
@@ -111,7 +88,7 @@ async function loadData() {
     allProjects = projects;
     allUnits = units;
 
-    projectCards = buildProjectCards(allProjects, allUnits);
+    projectCards = await buildProjectCards(allProjects, allUnits);
     populateProjectFilter(projectCards);
     applyFilters();
   } catch (err) {
@@ -120,8 +97,9 @@ async function loadData() {
   }
 }
 
-// Groups units under their parent project and tallies each status bucket.
-function buildProjectCards(projects, units) {
+// Groups units under their parent project, tallies each status bucket, and
+// fetches each project's native record photo (in parallel) via Deluge.
+async function buildProjectCards(projects, units) {
   const unitsByProjectId = {};
 
   units.forEach((u) => {
@@ -131,26 +109,30 @@ function buildProjectCards(projects, units) {
     unitsByProjectId[projId].push(u);
   });
 
-  return projects.map((p) => {
-    const projUnits = unitsByProjectId[p.id] || [];
+  return Promise.all(
+    projects.map(async (p) => {
+      const projUnits = unitsByProjectId[p.id] || [];
 
-    const stats = {};
-    STATUS_KEYS.forEach((key) => (stats[key] = 0));
+      const stats = {};
+      STATUS_KEYS.forEach((key) => (stats[key] = 0));
 
-    projUnits.forEach((u) => {
-      const status = u.Status || "Unsold";
-      if (stats.hasOwnProperty(status)) {
-        stats[status] += 1;
-      }
-    });
+      projUnits.forEach((u) => {
+        const status = u.Status || "Unsold";
+        if (stats.hasOwnProperty(status)) {
+          stats[status] += 1;
+        }
+      });
 
-    return {
-      project: p,
-      total: projUnits.length,
-      stats,
-      imageUrl: buildProjectImageUrl(p)
-    };
-  });
+      const imageUrl = await fetchProjectPhoto(p.id);
+
+      return {
+        project: p,
+        total: projUnits.length,
+        stats,
+        imageUrl
+      };
+    })
+  );
 }
 
 function populateProjectFilter(cards) {
