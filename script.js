@@ -160,6 +160,12 @@ function escapeHtml(value) {
   return div.innerHTML;
 }
 
+function statusBadgeClass(status) {
+  if (status === "Sold") return "Sold";
+  if (status === "Blocked") return "Booked"; // reuses existing grey/green style
+  return "Active"; // Unsold / Owner Share / Mortgage -> default orange
+}
+
 function renderCards(cards) {
   cardGrid.innerHTML = "";
 
@@ -243,6 +249,9 @@ function openUnitModal(projectId, status, title) {
   if (matches.length === 0) {
     unitModalBodyEl.innerHTML = `<p class="modal-empty">No units found.</p>`;
   } else {
+    const grid = document.createElement("div");
+    grid.className = "unit-card-grid";
+
     matches.forEach((u) => {
       const unitName = u.Product_Name || "Unnamed Unit";
       const unitCode = u.Product_Code || "—";
@@ -251,20 +260,39 @@ function openUnitModal(projectId, status, title) {
       const price = u.Unit_Price ? "₹" + Number(u.Unit_Price).toLocaleString("en-IN") : "—";
       const status = u.Status || "Unsold";
 
-      const row = document.createElement("div");
-      row.className = "unit-row";
-      row.innerHTML = `
-        <div class="unit-row-info">
-          <div class="unit-row-name">${escapeHtml(unitName)} <span style="color:#667085;font-weight:500;">(${escapeHtml(unitCode)})</span></div>
-          <div class="unit-row-meta">Tower ${escapeHtml(towerName)} · Floor ${escapeHtml(floorName)} · ${escapeHtml(price)} · ${escapeHtml(status)}</div>
+      const card = document.createElement("div");
+      card.className = "unit-card-simple";
+      card.innerHTML = `
+        <div class="unit-card-simple-top">
+          <div>
+            <div class="unit-card-simple-name">${escapeHtml(unitName)}</div>
+            <div class="unit-card-simple-code">Code: ${escapeHtml(unitCode)}</div>
+          </div>
+          <span class="status ${statusBadgeClass(status)}">${escapeHtml(status)}</span>
         </div>
-        <button class="unit-row-view-btn" data-id="${u.id}">View</button>
+        <div class="unit-card-simple-details">
+          <div>
+            <div class="label">Tower</div>
+            <div class="value">${escapeHtml(towerName)}</div>
+          </div>
+          <div>
+            <div class="label">Floor</div>
+            <div class="value">${escapeHtml(floorName)}</div>
+          </div>
+          <div>
+            <div class="label">Unit Price</div>
+            <div class="value">${escapeHtml(price)}</div>
+          </div>
+        </div>
+        <button class="unit-card-simple-view-btn" data-id="${u.id}">View Unit</button>
       `;
-      unitModalBodyEl.appendChild(row);
+      grid.appendChild(card);
     });
+
+    unitModalBodyEl.appendChild(grid);
   }
 
-  unitModalBodyEl.querySelectorAll(".unit-row-view-btn").forEach((btn) => {
+  unitModalBodyEl.querySelectorAll(".unit-card-simple-view-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const recordId = btn.dataset.id;
       if (ZOHO && ZOHO.CRM && ZOHO.CRM.UI && ZOHO.CRM.UI.Record) {
