@@ -20,12 +20,12 @@ string standalone.getProjectPhoto(String id)
 	// If the record has no photo, Zoho returns an error/empty body instead of image bytes.
 	if(response == null || response.length() == 0)
 	{
-		return Map().toString();
+		return Map();
 	}
 
 	base64Image = zoho.encryption.base64Encode(response);
 
 	result = Map();
 	result.put("base64", base64Image);
-	return result.toString();
+	return result;
 }
