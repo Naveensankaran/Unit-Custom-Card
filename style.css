@@ -84,20 +84,23 @@ h1 {
   opacity: 0.9;
 }
 
-.summary-pill.total {
-  background: linear-gradient(135deg, #ff5f6d, #d92e6b);
+.summary-pill.total,
+.summary-pill.available,
+.summary-pill.sold {
+  background: #fff;
+  border: 1px solid #d8dee9;
+  color: #1c2333;
 }
 
-.summary-pill.available {
-  background: linear-gradient(135deg, #ff8fb1, #ff5f9e);
+.summary-pill.total .lbl,
+.summary-pill.available .lbl,
+.summary-pill.sold .lbl {
+  color: #667085;
+  opacity: 1;
 }
 
 .summary-pill.blocked {
   background: linear-gradient(135deg, #7b6cf6, #5a3ff0);
-}
-
-.summary-pill.sold {
-  background: linear-gradient(135deg, #8f5cf7, #5a3ff0);
 }
 
 .summary-pill.owner-share {
