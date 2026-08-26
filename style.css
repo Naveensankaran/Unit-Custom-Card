@@ -72,13 +72,13 @@ h1 {
 
 .summary-pill .num {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .summary-pill .lbl {
-  font-size: 13px;
-  color: #667085;
-  font-weight: 600;
+  font-size: 16px;
+  color: #000000da;
+  font-weight: 700;
 }
 
 .summary-pill.total .lbl,
@@ -472,6 +472,39 @@ h1 {
 .modal-body {
   padding: 12px 20px 20px;
   overflow-y: auto;
+}
+
+.modal-filter-row {
+  display: flex;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #eef1f7;
+  flex-wrap: wrap;
+}
+
+.modal-filter-item {
+  flex: 1;
+  min-width: 140px;
+}
+
+.modal-filter-item label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: #667085;
+  margin-bottom: 6px;
+}
+
+.modal-filter-item select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d8dee9;
+  font-size: 13px;
+  background: #f9fafc;
+  color: #1c2333;
 }
 
 .unit-card-grid {

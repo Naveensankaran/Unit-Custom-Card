@@ -25,6 +25,8 @@ const unitModalOverlayEl = document.getElementById("unitModalOverlay");
 const unitModalTitleEl = document.getElementById("unitModalTitle");
 const unitModalBodyEl = document.getElementById("unitModalBody");
 const unitModalCloseBtnEl = document.getElementById("unitModalCloseBtn");
+const modalTowerFilterEl = document.getElementById("modalTowerFilter");
+const modalFloorFilterEl = document.getElementById("modalFloorFilter");
 
 // Raw CRM status values we roll up into per-project stat pills
 const STATUS_KEYS = ["Unsold", "Sold", "Owner Share", "Blocked", "Mortgage"];
@@ -33,6 +35,8 @@ let allProjects = [];   // raw Project records
 let allUnits = [];      // raw Unit (Products) records
 let projectCards = [];  // [{ project, stats: {...}, total }]
 let activeProjectFilter = "";
+let currentModalUnits = [];   // full (unfiltered) unit set for the open modal
+let modalActiveFilters = { tower: "", floor: "" };
 
 async function fetchAllRecords(entity) {
   let allRecords = [];
@@ -264,54 +268,99 @@ function openUnitModal(projectId, status, title) {
     return (u.Status || "Unsold") === status;
   });
 
+  currentModalUnits = matches;
+  modalActiveFilters = { tower: "", floor: "" };
+
   unitModalTitleEl.textContent = title;
+  populateModalFilters(matches);
+  renderModalUnits();
+
+  unitModalOverlayEl.classList.add("open");
+}
+
+function populateModalFilters(units) {
+  const towerNames = [...new Set(units.map((u) => (u.Tower && u.Tower.name)).filter(Boolean))].sort();
+  const floorNames = [...new Set(units.map((u) => (u.Floor && u.Floor.name)).filter(Boolean))].sort();
+
+  modalTowerFilterEl.innerHTML = '<option value="">All Towers</option>';
+  towerNames.forEach((name) => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    modalTowerFilterEl.appendChild(opt);
+  });
+
+  modalFloorFilterEl.innerHTML = '<option value="">All Floors</option>';
+  floorNames.forEach((name) => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    modalFloorFilterEl.appendChild(opt);
+  });
+
+  modalTowerFilterEl.value = "";
+  modalFloorFilterEl.value = "";
+}
+
+// Renders the modal's unit grid using currentModalUnits, filtered by
+// whatever tower/floor selection is currently active.
+function renderModalUnits() {
+  const filtered = currentModalUnits.filter((u) => {
+    const towerName = (u.Tower && u.Tower.name) || "";
+    const floorName = (u.Floor && u.Floor.name) || "";
+    if (modalActiveFilters.tower && towerName !== modalActiveFilters.tower) return false;
+    if (modalActiveFilters.floor && floorName !== modalActiveFilters.floor) return false;
+    return true;
+  });
+
   unitModalBodyEl.innerHTML = "";
 
-  if (matches.length === 0) {
+  if (filtered.length === 0) {
     unitModalBodyEl.innerHTML = `<p class="modal-empty">No units found.</p>`;
-  } else {
-    const grid = document.createElement("div");
-    grid.className = "unit-card-grid";
-
-    matches.forEach((u) => {
-      const unitName = u.Product_Name || "Unnamed Unit";
-      const unitCode = u.Product_Code || "—";
-      const towerName = (u.Tower && u.Tower.name) || "—";
-      const floorName = (u.Floor && u.Floor.name) || "—";
-      const price = u.Unit_Price ? "₹" + Number(u.Unit_Price).toLocaleString("en-IN") : "—";
-      const status = u.Status || "Unsold";
-
-      const card = document.createElement("div");
-      card.className = "unit-card-simple";
-      card.innerHTML = `
-        <div class="unit-card-simple-top">
-          <div>
-            <div class="unit-card-simple-name">${escapeHtml(unitName)}</div>
-            <div class="unit-card-simple-code">Code: ${escapeHtml(unitCode)}</div>
-          </div>
-          <span class="status ${statusBadgeClass(status)}">${escapeHtml(status)}</span>
-        </div>
-        <div class="unit-card-simple-details">
-          <div>
-            <div class="label">Tower</div>
-            <div class="value">${escapeHtml(towerName)}</div>
-          </div>
-          <div>
-            <div class="label">Floor</div>
-            <div class="value">${escapeHtml(floorName)}</div>
-          </div>
-          <div>
-            <div class="label">Unit Price</div>
-            <div class="value">${escapeHtml(price)}</div>
-          </div>
-        </div>
-        <button class="unit-card-simple-view-btn" data-id="${u.id}">View Unit</button>
-      `;
-      grid.appendChild(card);
-    });
-
-    unitModalBodyEl.appendChild(grid);
+    return;
   }
+
+  const grid = document.createElement("div");
+  grid.className = "unit-card-grid";
+
+  filtered.forEach((u) => {
+    const unitName = u.Product_Name || "Unnamed Unit";
+    const unitCode = u.Product_Code || "—";
+    const towerName = (u.Tower && u.Tower.name) || "—";
+    const floorName = (u.Floor && u.Floor.name) || "—";
+    const price = u.Unit_Price ? "₹" + Number(u.Unit_Price).toLocaleString("en-IN") : "—";
+    const status = u.Status || "Unsold";
+
+    const card = document.createElement("div");
+    card.className = "unit-card-simple";
+    card.innerHTML = `
+      <div class="unit-card-simple-top">
+        <div>
+          <div class="unit-card-simple-name">${escapeHtml(unitName)}</div>
+          <div class="unit-card-simple-code">Code: ${escapeHtml(unitCode)}</div>
+        </div>
+        <span class="status ${statusBadgeClass(status)}">${escapeHtml(status)}</span>
+      </div>
+      <div class="unit-card-simple-details">
+        <div>
+          <div class="label">Tower</div>
+          <div class="value">${escapeHtml(towerName)}</div>
+        </div>
+        <div>
+          <div class="label">Floor</div>
+          <div class="value">${escapeHtml(floorName)}</div>
+        </div>
+        <div>
+          <div class="label">Unit Price</div>
+          <div class="value">${escapeHtml(price)}</div>
+        </div>
+      </div>
+      <button class="unit-card-simple-view-btn" data-id="${u.id}">View Unit</button>
+    `;
+    grid.appendChild(card);
+  });
+
+  unitModalBodyEl.appendChild(grid);
 
   unitModalBodyEl.querySelectorAll(".unit-card-simple-view-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -323,9 +372,17 @@ function openUnitModal(projectId, status, title) {
       }
     });
   });
-
-  unitModalOverlayEl.classList.add("open");
 }
+
+modalTowerFilterEl.addEventListener("change", () => {
+  modalActiveFilters.tower = modalTowerFilterEl.value;
+  renderModalUnits();
+});
+
+modalFloorFilterEl.addEventListener("change", () => {
+  modalActiveFilters.floor = modalFloorFilterEl.value;
+  renderModalUnits();
+});
 
 function closeUnitModal() {
   unitModalOverlayEl.classList.remove("open");
