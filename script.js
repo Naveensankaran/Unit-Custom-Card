@@ -201,7 +201,7 @@ function renderCards(cards) {
         <div class="stat-row">
           <div class="stat-pill total" data-project-id="${c.project.id}" data-project-name="${escapeHtml(projectName)}" data-status="">
             <span class="num">${c.total}</span>
-            <span class="lbl">Total</span>
+            <span class="lbl">Total Units</span>
           </div>
           <div class="stat-pill available" data-project-id="${c.project.id}" data-project-name="${escapeHtml(projectName)}" data-status="Unsold">
             <span class="num">${c.stats["Unsold"]}</span>
