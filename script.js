@@ -14,6 +14,7 @@ const PHOTO_FUNCTION_NAME = "getprojectphoto";
 
 const cardGrid = document.getElementById("cardGrid");
 const totalUnitsEl = document.getElementById("totalUnits");
+const totalProjectsEl = document.getElementById("totalProjects");
 const unsoldUnitsEl = document.getElementById("unsoldUnits");
 const soldUnitsEl = document.getElementById("soldUnits");
 const ownerShareUnitsEl = document.getElementById("ownerShareUnits");
@@ -200,7 +201,7 @@ function renderCards(cards) {
         <div class="stat-row">
           <div class="stat-pill total" data-project-id="${c.project.id}" data-project-name="${escapeHtml(projectName)}" data-status="">
             <span class="num">${c.total}</span>
-            <span class="lbl">Total Units</span>
+            <span class="lbl">Total</span>
           </div>
           <div class="stat-pill available" data-project-id="${c.project.id}" data-project-name="${escapeHtml(projectName)}" data-status="Unsold">
             <span class="num">${c.stats["Unsold"]}</span>
@@ -242,6 +243,7 @@ function renderCards(cards) {
   });
 
   totalUnitsEl.textContent = summary.total;
+  totalProjectsEl.textContent = cards.length;
   unsoldUnitsEl.textContent = summary["Unsold"];
   soldUnitsEl.textContent = summary["Sold"];
   ownerShareUnitsEl.textContent = summary["Owner Share"];
