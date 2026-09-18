@@ -390,14 +390,6 @@ function closeUnitModal() {
   unitModalOverlayEl.classList.remove("open");
 }
 
-document.getElementById("addUnitBtn").addEventListener("click", () => {
-  if (ZOHO && ZOHO.CRM && ZOHO.CRM.UI && ZOHO.CRM.UI.Record) {
-    ZOHO.CRM.UI.Record.create({ Entity: UNIT_MODULE });
-  } else {
-    alert("Couldn't open the create page — Zoho SDK not available.");
-  }
-});
-
 document.getElementById("filterBtn").addEventListener("click", () => {
   filterPanelEl.classList.toggle("open");
 });
