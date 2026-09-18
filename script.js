@@ -420,8 +420,21 @@ unitModalOverlayEl.addEventListener("click", (e) => {
   if (e.target === unitModalOverlayEl) closeUnitModal();
 });
 
-ZOHO.embeddedApp.on("PageLoad", function (data) {
+// Widgets embedded on a record page (related list, etc.) get a PageLoad
+// event with the record context. Home Page Dashboard widgets often don't
+// fire PageLoad at all, so we also kick off loadData() as soon as init()
+// resolves, guarding against loading twice if PageLoad does fire.
+let dataLoaded = false;
+function loadDataOnce() {
+  if (dataLoaded) return;
+  dataLoaded = true;
   loadData();
+}
+
+ZOHO.embeddedApp.on("PageLoad", function (data) {
+  loadDataOnce();
 });
 
-ZOHO.embeddedApp.init();
+ZOHO.embeddedApp.init().then(function () {
+  loadDataOnce();
+});
