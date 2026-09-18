@@ -12,6 +12,11 @@ const DEFAULT_LOGO = "logo.png";
 // authenticated record-photo download and returns it base64-encoded.
 const PHOTO_FUNCTION_NAME = "getprojectphoto";
 
+// API names for the Unit (Products) picklist/decimal fields used in the
+// modal filters. Change here if the underlying field API names differ.
+const FACING_FIELD = "Unit_Facing_Direction"; // picklist
+const SALEABLE_FIELD = "Saleable";            // decimal
+
 const cardGrid = document.getElementById("cardGrid");
 const totalUnitsEl = document.getElementById("totalUnits");
 const totalProjectsEl = document.getElementById("totalProjects");
@@ -28,6 +33,8 @@ const unitModalBodyEl = document.getElementById("unitModalBody");
 const unitModalCloseBtnEl = document.getElementById("unitModalCloseBtn");
 const modalTowerFilterEl = document.getElementById("modalTowerFilter");
 const modalFloorFilterEl = document.getElementById("modalFloorFilter");
+const modalFacingFilterEl = document.getElementById("modalFacingFilter");
+const modalSaleableFilterEl = document.getElementById("modalSaleableFilter");
 
 // Raw CRM status values we roll up into per-project stat pills
 const STATUS_KEYS = ["Unsold", "Sold", "Owner Share", "Blocked", "Mortgage"];
@@ -271,7 +278,7 @@ function openUnitModal(projectId, status, title) {
   });
 
   currentModalUnits = matches;
-  modalActiveFilters = { tower: "", floor: "" };
+  modalActiveFilters = { tower: "", floor: "", facing: "", saleable: "" };
 
   unitModalTitleEl.textContent = title;
   populateModalFilters(matches);
@@ -283,6 +290,11 @@ function openUnitModal(projectId, status, title) {
 function populateModalFilters(units) {
   const towerNames = [...new Set(units.map((u) => (u.Tower && u.Tower.name)).filter(Boolean))].sort();
   const floorNames = [...new Set(units.map((u) => (u.Floor && u.Floor.name)).filter(Boolean))].sort();
+  // Picklist field, stored directly on the unit (not a lookup object).
+  const facingValues = [...new Set(units.map((u) => u[FACING_FIELD]).filter(Boolean))].sort();
+  // Decimal field, stored directly on the unit. Sorted numerically.
+  const saleableValues = [...new Set(units.map((u) => u[SALEABLE_FIELD]).filter((v) => v !== null && v !== undefined && v !== ""))]
+    .sort((a, b) => Number(a) - Number(b));
 
   modalTowerFilterEl.innerHTML = '<option value="">All Towers</option>';
   towerNames.forEach((name) => {
@@ -300,8 +312,26 @@ function populateModalFilters(units) {
     modalFloorFilterEl.appendChild(opt);
   });
 
+  modalFacingFilterEl.innerHTML = '<option value="">All Directions</option>';
+  facingValues.forEach((name) => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    modalFacingFilterEl.appendChild(opt);
+  });
+
+  modalSaleableFilterEl.innerHTML = '<option value="">All Saleable</option>';
+  saleableValues.forEach((value) => {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = Number(value).toLocaleString("en-IN");
+    modalSaleableFilterEl.appendChild(opt);
+  });
+
   modalTowerFilterEl.value = "";
   modalFloorFilterEl.value = "";
+  modalFacingFilterEl.value = "";
+  modalSaleableFilterEl.value = "";
 }
 
 // Renders the modal's unit grid using currentModalUnits, filtered by
@@ -310,8 +340,16 @@ function renderModalUnits() {
   const filtered = currentModalUnits.filter((u) => {
     const towerName = (u.Tower && u.Tower.name) || "";
     const floorName = (u.Floor && u.Floor.name) || "";
+    const facingValue = u[FACING_FIELD] || "";
+    const saleableValue = u[SALEABLE_FIELD];
     if (modalActiveFilters.tower && towerName !== modalActiveFilters.tower) return false;
     if (modalActiveFilters.floor && floorName !== modalActiveFilters.floor) return false;
+    if (modalActiveFilters.facing && facingValue !== modalActiveFilters.facing) return false;
+    if (
+      modalActiveFilters.saleable &&
+      String(saleableValue) !== modalActiveFilters.saleable
+    )
+      return false;
     return true;
   });
 
@@ -383,6 +421,16 @@ modalTowerFilterEl.addEventListener("change", () => {
 
 modalFloorFilterEl.addEventListener("change", () => {
   modalActiveFilters.floor = modalFloorFilterEl.value;
+  renderModalUnits();
+});
+
+modalFacingFilterEl.addEventListener("change", () => {
+  modalActiveFilters.facing = modalFacingFilterEl.value;
+  renderModalUnits();
+});
+
+modalSaleableFilterEl.addEventListener("change", () => {
+  modalActiveFilters.saleable = modalSaleableFilterEl.value;
   renderModalUnits();
 });
 
