@@ -12,6 +12,20 @@
       <div>
         <h1>Project Unit Status</h1>
       </div>
+      <div class="filter-wrap">
+        <button class="filter-btn" id="filterBtn">Filter</button>
+        <div class="filter-panel" id="filterPanel">
+          <div class="filter-row">
+            <label for="projectFilter">Project</label>
+            <select id="projectFilter">
+              <option value="">All Projects</option>
+            </select>
+          </div>
+          <div class="filter-actions">
+            <button class="filter-clear-btn" id="filterClearBtn">Clear</button>
+          </div>
+        </div>
+      </div>
     </header>
 
     <div class="toolbar">
@@ -36,20 +50,6 @@
         </div>
         <div class="summary-pill mortgage">
           <strong>Mortgage: <span id="mortgageUnits">0</span></strong>
-        </div>
-      </div>
-      <div class="filter-wrap">
-        <button class="filter-btn" id="filterBtn">Filter</button>
-        <div class="filter-panel" id="filterPanel">
-          <div class="filter-row">
-            <label for="projectFilter">Project</label>
-            <select id="projectFilter">
-              <option value="">All Projects</option>
-            </select>
-          </div>
-          <div class="filter-actions">
-            <button class="filter-clear-btn" id="filterClearBtn">Clear</button>
-          </div>
         </div>
       </div>
     </div>
